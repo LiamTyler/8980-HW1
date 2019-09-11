@@ -1,38 +1,55 @@
 String rootDir = "/home/liam/Documents/8980-HW1/";
 
 int SW = 800;
-int SH = 1200;
+int SH = 1000;
 
-int playerWidth  = 26;
-int playerHeight = 16;
+class Player
+{
+  Player()
+  {
+    size           = new PVector( 26, 16 );
+    pos            = new PVector( SW / 2, SH - 20 );
+    vel            = new PVector( 0, 0 );
+    sprite         = loadImage( rootDir + "assets/player_sprite.png" );
+    speed          = 10;
+    keysPressed[0] = 0;
+    keysPressed[1] = 0;
+  }
+  PVector size;
+  PVector pos;
+  PVector vel;
+  PImage sprite;
+  float speed;
+  int[] keysPressed = new int[2];
+};
 
-PVector playerPos;
-int[] keysPressed = { 0, 0 }; // [0] == left, [1] == right
-PImage playerImg;
+Player player;
 
 class Enemy
 {
+  Enemy()
+  {
+    pos  = new PVector( 0, 0 );
+    vel  = new PVector( 0, 0 );
+    size = new PVector( 10, 10 );
+  }
   PVector pos;
   PVector vel;
   PVector size;
 };
-int MAX_ENEMIES = 100;
+int MAX_ENEMIES = 50;
 Enemy[] enemies = new Enemy[MAX_ENEMIES];
 int numEnemies  = 0;
+int lastEnemySpawnTime = 0;
 
 void setup()
 {
   size( 100, 100 );
   surface.setSize( SW, SH );
+  frameRate( 60 );
   
   playerPos = new PVector( SW / 2, SH - playerHeight - 20 );
   playerImg = loadImage( rootDir + "assets/player_sprite.png" );
-  
-  for ( int i = 0; i < MAX_ENEMIES; ++i )
-  {
-    enemies[i] = new Enemy();
-    enemies[i].size = new PVector( 10, 10 );
-  }
 }
 
 void update( float dt )
@@ -42,14 +59,23 @@ void update( float dt )
   
   for ( int i = 0; i < numEnemies; ++i )
   {
-    enemies[i].pos.add( enemies[i].vel );
+    enemies[i].pos.add( PVector.mult( enemies[i].vel, dt ) );
+    
+    if ( enemies[i].pos.y >= SH )
+    {
+      enemies[i] = enemies[numEnemies - 1];
+      --i;
+      --numEnemies;
+    }
   }
   
-  if ( random( 1 ) < .2 && numEnemies < MAX_ENEMIES )
+  if ( millis() - lastEnemySpawnTime > 100 && random( 1 ) < .1 && numEnemies < MAX_ENEMIES )
   {
-    println( numEnemies );
+    enemies[numEnemies]     = new Enemy();
     enemies[numEnemies].pos = new PVector( random( 1 ) * SW, 10 );
+    enemies[numEnemies].vel = new PVector( 0, 3 );
     ++numEnemies;
+    lastEnemySpawnTime = millis();
   }
 }
 
