@@ -1,7 +1,7 @@
 String rootDir = "/home/liam/Documents/8980-HW1/";
 
 int SW = 800;
-int SH = 1000;
+int SH = 400;
 
 abstract class Moveable
 {
@@ -37,7 +37,7 @@ class BasicBullet extends Bullet
 {
   BasicBullet( PVector startPos )
   {
-    super( startPos, new PVector( 0, -3 ) );
+    super( startPos, new PVector( 0, -1 ) );
     size = new PVector( 6, 12 );
     col = color( 255, 0, 0 );
   }
@@ -47,8 +47,8 @@ class Weapon
 {
   Weapon()
   {
-    fireRate       = 500;
-    bullets        = new Bullet[10];
+    fireRate       = 100;
+    bullets        = new Bullet[100];
     numBullets     = 0;
     timeOfLastFire = 0;
   }
@@ -58,7 +58,6 @@ class Weapon
     int currT = millis();
     if ( currT > timeOfLastFire + fireRate )
     {
-      println( "Firing: ", numBullets );
       bullets[numBullets] = new BasicBullet( pos );
       ++numBullets;
       timeOfLastFire = currT;
@@ -70,6 +69,12 @@ class Weapon
     for ( int i = 0; i < numBullets; ++i )
     {
       bullets[i].pos.add( PVector.mult( bullets[i].vel, dt ) );
+      if ( bullets[i].pos.y < 0 )
+      {
+        bullets[i] = bullets[numBullets - 1];
+        --numBullets;
+        --i;
+      }
     }
   }
   
@@ -117,6 +122,13 @@ class Player extends Moveable
     weapon.update( dt );
   }
   
+  void draw()
+  {
+    image( sprite, pos.x, pos.y, size.x, size.y );
+    
+    weapon.draw();
+  }
+  
   PImage sprite;
   float speed;
   int[] keysPressed;
@@ -135,6 +147,13 @@ int MAX_ENEMIES = 50;
 Enemy[] enemies = new Enemy[MAX_ENEMIES];
 int numEnemies  = 0;
 int lastEnemySpawnTime = 0;
+
+int killEnemy( int index )
+{
+  enemies[index] = enemies[numEnemies - 1];
+  --numEnemies;
+  return index - 1;
+}
 
 void setup()
 {
@@ -157,9 +176,7 @@ void update( float dt )
     
     if ( enemies[i].pos.y >= SH )
     {
-      enemies[i] = enemies[numEnemies - 1];
-      --i;
-      --numEnemies;
+      i = killEnemy( i );
     }
   }
   
@@ -167,9 +184,27 @@ void update( float dt )
   {
     enemies[numEnemies]     = new Enemy();
     enemies[numEnemies].pos = new PVector( min( SW - player.size.x / 2, max( player.size.x / 2, random( 1 ) * SW ) ), 10 );
-    enemies[numEnemies].vel = new PVector( 0, 3 );
+    enemies[numEnemies].vel = new PVector( 0, 1 );
     ++numEnemies;
     lastEnemySpawnTime = millis();
+  }
+  
+  for ( int enemyIndex = 0; enemyIndex < numEnemies; ++enemyIndex )
+  {
+    for ( int bulletIndex = 0; bulletIndex < player.weapon.numBullets; ++bulletIndex )
+    {
+      Enemy e  = enemies[enemyIndex];
+      Bullet b = player.weapon.bullets[bulletIndex];
+      float dx = abs( b.pos.x - e.pos.x );
+      float dy = abs( b.pos.y - e.pos.y );
+      
+      if ( dx < ( b.size.x + e.size.x ) / 2 && dy < ( b.size.y + e.size.y ) / 2 )
+      {
+        println( "Enemy pos = ", e.pos, ", bullet pos = ", b.pos );
+        enemyIndex = killEnemy( enemyIndex );
+        while ( true );
+      }
+    }
   }
 }
 
@@ -181,6 +216,7 @@ void draw()
   
   player.draw();
   
+  fill( color( 255, 255, 255 ) );
   for ( int i = 0; i < numEnemies; ++i )
   {
     rect( enemies[i].pos.x, enemies[i].pos.y, enemies[i].size.x, enemies[i].size.y );
