@@ -164,13 +164,15 @@ class Player extends Moveable
   {
     float imgAspectRatio = 26 / 16.0;
     size           = new PVector( 50, 50 / imgAspectRatio );
-    pos            = new PVector( SW / 2, SH - 50 );
+    pos            = new PVector( PLAYER_START_X, PLAYER_START_Y );
     vel            = new PVector( 0, 0 );
     sprite         = playerSprite;
     speed          = 10;
     keysPressed    = new int[2];
     keysPressed[0] = 0;
     keysPressed[1] = 0;
+    lastDied       = -1000;
+    invincible     = false;
     
     weapon = new PlayerWeapon();
   }
@@ -185,13 +187,18 @@ class Player extends Moveable
     player.pos.x += dt * player.speed * ( player.keysPressed[1] - player.keysPressed[0] );
     player.pos.x  = max( player.size.x / 2, min( SW - player.size.x / 2, player.pos.x ) );
     
+    invincible = customFrameCount - lastDied < 120;
+    
     weapon.update( dt );
   }
   
   void draw()
   {
-    tint( 0, 255, 0 );
-    image( playerSprite, pos.x, pos.y, size.x, size.y );
+    if ( !invincible || customFrameCount / 3 % 2 == 0 )
+    {
+      tint( 0, 255, 0 );
+      image( playerSprite, pos.x, pos.y, size.x, size.y );
+    }
     
     stroke( 255, 0, 0 );
     weapon.draw();
@@ -200,6 +207,8 @@ class Player extends Moveable
   PImage sprite;
   float speed;
   int[] keysPressed;
+  int lastDied;
+  boolean invincible;
   Weapon weapon;
 };
 
@@ -258,6 +267,9 @@ PFont pixelFont;
 
 int playerLives = 3;
 int score       = 0;
+
+int PLAYER_START_X = SW / 2;
+int PLAYER_START_Y = SH - 50;
 
 void setup()
 {
@@ -362,6 +374,11 @@ void update( float dt )
       }
     }
     
+    if ( player.invincible )
+    {
+      return;
+    }
+    
     // enemy bullets
     for ( int bulletIndex = 0; bulletIndex < e.weapon.numBullets; ++bulletIndex )
     {
@@ -373,6 +390,9 @@ void update( float dt )
       {
         e.weapon.destroyBullet( bulletIndex );
         --playerLives;
+        player.pos.x = PLAYER_START_X;
+        player.pos.y = PLAYER_START_Y;
+        player.lastDied = customFrameCount;
         return;
       }
     }
@@ -424,11 +444,8 @@ void draw()
   for ( int i = 0; i < playerLives - 1; ++i )
   {
     image( playerSprite, 150 + i * 45, SH - 15, 35, 25 );
-  }
-  
-  
-  
-  
+  }  
+
   player.draw();
   
   noTint();
