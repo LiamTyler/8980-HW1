@@ -39,12 +39,13 @@ class PlayerBullet extends Bullet
   PlayerBullet( PVector startPos )
   {
     super( startPos, new PVector( 0, -10 ) );
-    size = new PVector( 9, 21 );
+    size = new PVector( 3, 10 );
   }
   
   void draw()
   {
-    fill( 255, 0, 0 );
+    stroke( 255, 255, 255 );
+    fill( 255, 255, 255 );
     rect( pos.x, pos.y, size.x, size.y );
   }
 };
@@ -53,14 +54,14 @@ class EnemyBullet extends Bullet
 {
   EnemyBullet( PVector startPos, int t )
   {
-    super( startPos, new PVector( 0, -3 ) );
+    super( startPos, new PVector( 0, 5 ) );
     size = new PVector( 9, 21 );
     type = t;
   }
   
   void draw()
   {
-    int spriteIndex = 3 - ( frameCount / 5 ) % 4;
+    int spriteIndex = ( customFrameCount / 2 ) % 4;
     image( bulletSheet[4 * type + spriteIndex], pos.x, pos.y, size.x, size.y );
   }
   
@@ -86,7 +87,7 @@ class Weapon
     for ( int i = 0; i < numBullets; ++i )
     {
       bullets[i].pos.add( PVector.mult( bullets[i].vel, dt ) );
-      if ( bullets[i].pos.y < 0 )
+      if ( bullets[i].pos.y < 80 || bullets[i].pos.y > SH - 40 )
       {
         bullets[i] = bullets[numBullets - 1];
         --numBullets;
@@ -155,15 +156,17 @@ class EnemyWeapon extends Weapon
   int type;
 };
 
+PImage playerSprite;
+
 class Player extends Moveable
 {
   Player()
   {
     float imgAspectRatio = 26 / 16.0;
     size           = new PVector( 50, 50 / imgAspectRatio );
-    pos            = new PVector( SW / 2, SH - 20 );
+    pos            = new PVector( SW / 2, SH - 50 );
     vel            = new PVector( 0, 0 );
-    sprite         = loadImage( rootDir + "assets/player_sprite.png" );
+    sprite         = playerSprite;
     speed          = 10;
     keysPressed    = new int[2];
     keysPressed[0] = 0;
@@ -187,9 +190,10 @@ class Player extends Moveable
   
   void draw()
   {
-    noTint();
-    image( sprite, pos.x, pos.y, size.x, size.y );
+    tint( 0, 255, 0 );
+    image( playerSprite, pos.x, pos.y, size.x, size.y );
     
+    stroke( 255, 0, 0 );
     weapon.draw();
   }
   
@@ -229,7 +233,7 @@ class Enemy extends Moveable
   {
     type      = t;
     frameDied = 0;
-    weapon    = new EnemyWeapon( 0 );
+    weapon    = new EnemyWeapon( type );
   }
   
   EnemyWeapon weapon;
@@ -250,6 +254,10 @@ PImage enemyDeathSprite;
 
 int customFrameCount = 0;
 boolean paused = false;
+PFont pixelFont;
+
+int playerLives = 3;
+int score       = 0;
 
 void setup()
 {
@@ -259,8 +267,11 @@ void setup()
   imageMode( CENTER );
   rectMode( CENTER );
   
+  pixelFont = createFont( "LCD_Solid.ttf", 24 );
+  
   player = new Player();
   
+  playerSprite     = loadImage( rootDir + "assets/player_sprite.png" );
   enemyDeathSprite = loadImage( rootDir + "assets/enemy_death_sprite.png" );
   PImage img;
   enemySprites[0] = new EnemySprite();
@@ -319,7 +330,7 @@ void update( float dt )
       // i = killEnemy( i );
     }
     
-    if ( random( 1 ) < 0.001 )
+    if ( random( 1 ) < 0.0005 )
     {
       float x = enemies[i].pos.x;
       float y = enemies[i].pos.y + enemies[i].size.y / 2;
@@ -343,12 +354,26 @@ void update( float dt )
       
       if ( dx < ( b.size.x + e.size.x ) / 2 && dy < ( b.size.y + e.size.y ) / 2 )
       {
-        // enemyIndex = killEnemy( enemyIndex );
         e.frameDied = customFrameCount;
+        score += 10;
         
         player.weapon.destroyBullet( bulletIndex );
-        --bulletIndex;
         break;
+      }
+    }
+    
+    // enemy bullets
+    for ( int bulletIndex = 0; bulletIndex < e.weapon.numBullets; ++bulletIndex )
+    {
+      Bullet b = e.weapon.bullets[bulletIndex];
+      float dx = abs( b.pos.x - player.pos.x );
+      float dy = abs( b.pos.y - player.pos.y );
+      
+      if ( dx < ( b.size.x + player.size.x ) / 2 && dy < ( b.size.y + player.size.y ) / 2 )
+      {
+        e.weapon.destroyBullet( bulletIndex );
+        --playerLives;
+        return;
       }
     }
   }
@@ -364,9 +389,50 @@ void draw()
   
   background( 0, 0, 0 );
   
+  if ( playerLives == 0 )
+  {
+    fill( 255, 255, 255 );
+    textFont( pixelFont, 72 );
+    textAlign( CENTER, CENTER );
+    text( "GAME OVER", SW / 2, SH / 2 );
+    return;
+  }
+  
+  textAlign( LEFT, TOP );
+  fill( 255, 255, 255 );
+  textFont( pixelFont, 24 );
+  text( "SCORE <1>  HI-SCORE SCORE <2>", 100, 5 );
+  
+  // display leading 0's in score to always keep it at 4 digits
+  int numDigits = max( 0, int( log( score + 0.1 ) / log( 10 ) ) );
+  int scoreTextX = 130;
+  for ( int i = 0; i < 3 - numDigits; ++i )
+  {
+    text( "0", scoreTextX, 40 );
+    scoreTextX += 15;
+  }
+  // actual score
+  text( str( score ), scoreTextX, 40 );
+  // highscore (always 0000)
+  text( "0000", 280, 40 );
+  
+  stroke( 0, 255, 0 );
+  line( 0, SH - 30, SW, SH - 30 );
+  text( str( playerLives ), 100, SH - 25 );
+  text( "CREDIT  00", SW - 200, SH - 25 );
+  tint( 0, 255, 0 );
+  for ( int i = 0; i < playerLives - 1; ++i )
+  {
+    image( playerSprite, 150 + i * 45, SH - 15, 35, 25 );
+  }
+  
+  
+  
+  
   player.draw();
   
-  int spriteIndex = ( customFrameCount / 30 ) % 2;
+  noTint();
+  int spriteIndex = ( customFrameCount / 10 ) % 2;
   for ( int i = 0; i < ENEMY_WIDTH * ENEMY_HEIGHT; ++i )
   {
     if ( enemies[i].frameDied != 0 )
