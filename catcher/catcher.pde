@@ -1,7 +1,8 @@
-String rootDir = "/home/liam/Documents/8980-HW1/";
+// String rootDir = "/home/liam/Documents/8980-HW1/";
+String rootDir = "C:/Users/Tyler/Documents/8980-HW1/";
 
-int SW = 800;
-int SH = 1000;
+int SW = 640;
+int SH = 480;
 
 abstract class Moveable
 {
@@ -26,44 +27,57 @@ class Bullet extends Moveable
   
   void draw()
   {
-    fill( col );
+    fill( 255, 255, 255 );
     rect( pos.x, pos.y, size.x, size.y );
   }
-  
-  color col;
 };
 
-class BasicBullet extends Bullet
+PImage[] bulletSheet = new PImage[12];
+
+class PlayerBullet extends Bullet
 {
-  BasicBullet( PVector startPos )
+  PlayerBullet( PVector startPos )
+  {
+    super( startPos, new PVector( 0, -10 ) );
+    size = new PVector( 9, 21 );
+  }
+  
+  void draw()
+  {
+    fill( 255, 0, 0 );
+    rect( pos.x, pos.y, size.x, size.y );
+  }
+};
+
+class EnemyBullet extends Bullet
+{
+  EnemyBullet( PVector startPos, int t )
   {
     super( startPos, new PVector( 0, -3 ) );
-    size = new PVector( 6, 12 );
-    col = color( 255, 0, 0 );
+    size = new PVector( 9, 21 );
+    type = t;
   }
+  
+  void draw()
+  {
+    int spriteIndex = 3 - ( frameCount / 5 ) % 4;
+    image( bulletSheet[4 * type + spriteIndex], pos.x, pos.y, size.x, size.y );
+  }
+  
+  int type;
 };
 
 class Weapon
 {
-  Weapon()
+  Weapon( int rate, int maxBullets )
   {
-    fireRate       = 500;
-    bullets        = new Bullet[10];
+    fireRate       = rate;
+    bullets        = new Bullet[maxBullets];
     numBullets     = 0;
     timeOfLastFire = 0;
   }
   
-  void fire( PVector pos )
-  {
-    int currT = millis();
-    if ( currT > timeOfLastFire + fireRate )
-    {
-      println( "Firing: ", numBullets );
-      bullets[numBullets] = new BasicBullet( pos );
-      ++numBullets;
-      timeOfLastFire = currT;
-    }
-  }
+  void abstract fire( PVector pos );
   
   void update( float dt )
   {
@@ -87,6 +101,47 @@ class Weapon
   int numBullets;
 };
 
+class PlayerWeapon extends Weapon
+{
+  PlayerWeapon()
+  {
+    super( 500, 10 );
+  }
+  
+  void fire( PVector pos )
+  {
+    int currT = millis();
+    if ( currT > timeOfLastFire + fireRate )
+    {
+      bullets[numBullets] = new PlayerBullet( pos );
+      ++numBullets;
+      timeOfLastFire = currT;
+    }
+  }
+};
+
+class EnemyWeapon extends Weapon
+{
+  EnemyWeapon( int t )
+  {
+    super( 500, 5 );
+    type = t;
+  }
+  
+  void fire( PVector pos )
+  {
+    int currT = millis();
+    if ( currT > timeOfLastFire + fireRate )
+    {
+      bullets[numBullets] = new EnemyBullet( pos, type );
+      ++numBullets;
+      timeOfLastFire = currT;
+    }
+  }
+  
+  int type;
+};
+
 class Player extends Moveable
 {
   Player()
@@ -101,7 +156,8 @@ class Player extends Moveable
     keysPressed[0] = 0;
     keysPressed[1] = 0;
     
-    weapon = new Weapon();
+    weapon = new EnemyWeapon( 0 );
+    // weapon = new PlayerWeapon();
   }
   
   void fire() 
@@ -115,6 +171,12 @@ class Player extends Moveable
     player.pos.x = max( player.size.x / 2, min( SW - player.size.x / 2, player.pos.x ) );
     
     weapon.update( dt );
+  }
+  
+  void draw()
+  {
+    image( sprite, pos.x, pos.y, size.x, size.y );
+    weapon.draw();
   }
   
   PImage sprite;
@@ -143,6 +205,24 @@ void setup()
   frameRate( 60 );
   imageMode( CENTER );
   rectMode( CENTER );
+  
+  PImage img;
+  img = loadImage( rootDir + "assets/bullets1_sheet.png" );
+  bulletSheet[0] = img.get( 0,  0, 3, 7 );
+  bulletSheet[1] = img.get( 5,  0, 3, 7 );
+  bulletSheet[2] = img.get( 10, 0, 3, 7 );
+  bulletSheet[3] = img.get( 15, 0, 3, 7 );
+  img = loadImage( rootDir + "assets/bullets2_sheet.png" );
+  bulletSheet[4] = img.get( 0,  0, 3, 7 );
+  bulletSheet[5] = img.get( 5,  0, 3, 7 );
+  bulletSheet[6] = img.get( 10, 0, 3, 7 );
+  bulletSheet[7] = img.get( 15, 0, 3, 7 );
+  img = loadImage( rootDir + "assets/bullets3_sheet.png" );
+  bulletSheet[8]  = img.get( 0,  0, 3, 7 );
+  bulletSheet[9]  = img.get( 5,  0, 3, 7 );
+  bulletSheet[10] = img.get( 10, 0, 3, 7 );
+  bulletSheet[11] = img.get( 15, 0, 3, 7 );
+  
   
   player = new Player();
 }
@@ -181,9 +261,10 @@ void draw()
   
   player.draw();
   
+  fill( 255, 255, 255 );
   for ( int i = 0; i < numEnemies; ++i )
   {
-    rect( enemies[i].pos.x, enemies[i].pos.y, enemies[i].size.x, enemies[i].size.y );
+    // rect( enemies[i].pos.x, enemies[i].pos.y, enemies[i].size.x, enemies[i].size.y );
   }
 }
 
