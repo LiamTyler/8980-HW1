@@ -1,6 +1,6 @@
 String rootDir = "/home/liam/Documents/8980-HW1/";
 
-int SW = 400;
+int SW = 800;
 int SH = 600;
 
 abstract class Moveable
@@ -143,19 +143,27 @@ class Player extends Moveable
 
 Player player;
 
-class SpriteSheetEntry
+class Sprite
 {
-  SpriteSheetEntry( PImage image, color cc )
+  Sprite( PImage image )
   {
     img = image;
-    c = cc;
   }
   
   PImage img;
-  color c;
 };
-PImage enemySpriteSheet;
-SpriteSheetEntry[] enemySpriteSheetTable = new SpriteSheetEntry[4];
+
+class EnemySprite
+{
+  EnemySprite( )
+  {
+    imgs = new PImage[2];
+  }
+  
+  PImage[] imgs;
+};
+
+EnemySprite[] enemySprites = new EnemySprite[3];
 
 class Enemy extends Moveable
 {
@@ -166,6 +174,7 @@ class Enemy extends Moveable
   
   int type;
 };
+
 int MAX_ENEMIES = 50;
 Enemy[] enemies = new Enemy[MAX_ENEMIES];
 int numEnemies  = 0;
@@ -178,6 +187,8 @@ int killEnemy( int index )
   return index - 1;
 }
 
+boolean paused = false;
+
 void setup()
 {
   size( 100, 100 );
@@ -187,12 +198,20 @@ void setup()
   rectMode( CENTER );
   
   player = new Player();
-  enemySpriteSheet = loadImage( rootDir + "assets/basic_enemy_sprite_sheet.png" );
-  println( enemySpriteSheet.width, " ", enemySpriteSheet.height );
-  enemySpriteSheetTable[0] = new SpriteSheetEntry( enemySpriteSheet.get( 0, 0, 16, 16 ), color ( 255, 0, 0 ) );
-  enemySpriteSheetTable[1] = new SpriteSheetEntry( enemySpriteSheet.get( 33,  0, 16, 16), color ( 0, 255, 0 ) );
-  enemySpriteSheetTable[2] = new SpriteSheetEntry( enemySpriteSheet.get( 66,  0, 22, 16), color ( 0, 0, 255 ) );
-  enemySpriteSheetTable[3] = new SpriteSheetEntry( enemySpriteSheet.get( 100, 0, 22, 16 ), color ( 255, 0, 255 ) );
+  
+  PImage img;
+  enemySprites[0] = new EnemySprite();
+  enemySprites[1] = new EnemySprite();
+  enemySprites[2] = new EnemySprite();
+  img = loadImage( rootDir + "assets/enemy1_sheet.png" );
+  enemySprites[0].imgs[0] = img.get( 0,  0, 16, 16 );
+  enemySprites[0].imgs[1] = img.get( 33, 0, 16, 16 );
+  img = loadImage( rootDir + "assets/enemy2_sheet.png" );
+  enemySprites[1].imgs[0] = img.get( 0,  0, 22, 16 );
+  enemySprites[1].imgs[1] = img.get( 33, 0, 22, 16 );
+  img = loadImage( rootDir + "assets/enemy3_sheet.png" );
+  enemySprites[2].imgs[0] = img.get( 0,  0, 24, 16 );
+  enemySprites[2].imgs[1] = img.get( 32, 0, 24, 16 );
 }
 
 void update( float dt )
@@ -211,7 +230,7 @@ void update( float dt )
   
   if ( millis() - lastEnemySpawnTime > 100 && random( 1 ) < .1 && numEnemies < MAX_ENEMIES )
   {
-    enemies[numEnemies]     = new Enemy( (int) random( 4 ) );
+    enemies[numEnemies]     = new Enemy( (int) random( 3 ) );
     enemies[numEnemies].pos = new PVector( min( SW - player.size.x / 2, max( player.size.x / 2, random( 1 ) * SW ) ), 10 );
     enemies[numEnemies].vel = new PVector( 0, 1 );
     ++numEnemies;
@@ -247,12 +266,13 @@ void draw()
   
   player.draw();
   
-  fill( color( 255, 255, 255 ) );
+  int spriteIndex = ( frameCount / 30 ) % 2;
   for ( int i = 0; i < numEnemies; ++i )
   {
-    SpriteSheetEntry s = enemySpriteSheetTable[enemies[i].type];
-    tint( s.c );
-    image( s.img, enemies[i].pos.x, enemies[i].pos.y, enemies[i].size.x, enemies[i].size.y );
+    EnemySprite s = enemySprites[enemies[i].type];
+    // tint( s.c );
+    
+    image( s.imgs[spriteIndex], enemies[i].pos.x, enemies[i].pos.y, enemies[i].size.x, enemies[i].size.y );
   }
 }
 
@@ -273,6 +293,10 @@ void keyPressed() {
     if ( key == ' ' )
     {
       player.fire();
+    }
+    else if ( key == 'p' )
+    {
+      paused = !paused;
     }
   }
 }
