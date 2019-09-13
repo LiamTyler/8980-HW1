@@ -132,6 +132,38 @@ class PlayerWeapon extends Weapon
       timeOfLastFire = currT;
     }
   }
+  
+  void update( float dt )
+  {
+    for ( int i = 0; i < numBullets; ++i )
+    {
+      bullets[i].pos.add( PVector.mult( bullets[i].vel, dt ) );
+      if ( bullets[i].pos.y < 80 || bullets[i].pos.y > SH - 40 )
+      {
+        bullets[i] = bullets[numBullets - 1];
+        --numBullets;
+        --i;
+        continue;
+      }
+      
+      for ( int h = 0; h < ENEMY_WIDTH; ++h )
+      {
+        float dx = abs( bullets[i].pos.x - hostages[h].pos.x );
+        float dy = abs( bullets[i].pos.y - hostages[h].pos.y );
+        
+        if ( dx < ( bullets[i].size.x + hostages[h].size.x ) / 2 && dy < ( bullets[i].size.y + hostages[h].size.y ) / 2 )
+        {
+          killPlayer();
+          hostages[h].frameDied = customFrameCount;
+          bullets[i] = bullets[numBullets - 1];
+          --numBullets;
+          --h;
+          break;
+        }
+      }
+    }
+  }
+  
 };
 
 class EnemyWeapon extends Weapon
@@ -212,7 +244,43 @@ class Player extends Moveable
   Weapon weapon;
 };
 
+class Hostage extends Moveable
+{
+  Hostage()
+  {
+    frameDied = 0;
+  }
+  void draw()
+  {
+    if ( frameDied != 0 )
+    {
+      if ( customFrameCount - frameDied < 30 )
+      {
+        image( enemyDeathSprite, pos.x, pos.y, size.x, size.y );
+      }
+      else
+      {
+        return;
+      }
+    }
+    else
+    {
+      image( playerSprite, pos.x, pos.y, size.x, size.y );
+    }
+  }
+  
+  int frameDied;
+};
+
 Player player;
+
+void killPlayer()
+{
+  --playerLives;
+  player.pos.x = PLAYER_START_X;
+  player.pos.y = PLAYER_START_Y;
+  player.lastDied = customFrameCount;
+}
 
 class Sprite
 {
@@ -250,16 +318,14 @@ class Enemy extends Moveable
   int frameDied;
 };
 
-class EnemyGroup
-{
-};
-
 int ENEMY_WIDTH        = 11;
-int ENEMY_HEIGHT       = 6;
+int ENEMY_HEIGHT       = 1;
 int TOTAL_ENEMIES      = ENEMY_WIDTH * ENEMY_HEIGHT;
 Enemy[] enemies        = new Enemy[TOTAL_ENEMIES];
 float enemySpeed       = .3;
 PImage enemyDeathSprite;
+
+Hostage[] hostages = new Hostage[ENEMY_WIDTH];
 
 int customFrameCount = 0;
 boolean paused = false;
@@ -326,11 +392,27 @@ void setup()
       enemies[i].size = new PVector( 25, 25 );
     }
   }
+  for ( int i = 0; i < ENEMY_WIDTH; ++i )
+  {
+    hostages[i]      = new Hostage( );
+    hostages[i].pos  = new PVector( 40 * i, 160 );
+    hostages[i].vel  = new PVector( enemySpeed, 0 );
+    hostages[i].size = new PVector( 25, 15 );
+  }
 }
 
 void update( float dt )
 {
   player.update( dt );
+  
+  for ( int i = 0; i < ENEMY_WIDTH; ++i )
+  {
+    hostages[i].pos.add( PVector.mult( hostages[i].vel, dt ) );
+    if ( hostages[i].pos.x >= SW )
+    {
+      --playerLives;
+    }
+  }
   
   for ( int i = 0; i < TOTAL_ENEMIES; ++i )
   {
@@ -376,7 +458,7 @@ void update( float dt )
     
     if ( player.invincible )
     {
-      return;
+      continue;
     }
     
     // enemy bullets
@@ -389,10 +471,7 @@ void update( float dt )
       if ( dx < ( b.size.x + player.size.x ) / 2 && dy < ( b.size.y + player.size.y ) / 2 )
       {
         e.weapon.destroyBullet( bulletIndex );
-        --playerLives;
-        player.pos.x = PLAYER_START_X;
-        player.pos.y = PLAYER_START_Y;
-        player.lastDied = customFrameCount;
+        killPlayer();
         return;
       }
     }
@@ -401,6 +480,16 @@ void update( float dt )
 
 void draw()
 {
+  if ( playerLives <= 0 )
+  {
+    background( 0, 0, 0 );
+    fill( 255, 255, 255 );
+    textFont( pixelFont, 72 );
+    textAlign( CENTER, CENTER );
+    text( "GAME OVER", SW / 2, SH / 2 );
+    return;
+  }
+  
   if ( !paused )
   {
     update( 1 );
@@ -408,15 +497,6 @@ void draw()
   }
   
   background( 0, 0, 0 );
-  
-  if ( playerLives == 0 )
-  {
-    fill( 255, 255, 255 );
-    textFont( pixelFont, 72 );
-    textAlign( CENTER, CENTER );
-    text( "GAME OVER", SW / 2, SH / 2 );
-    return;
-  }
   
   textAlign( LEFT, TOP );
   fill( 255, 255, 255 );
@@ -447,6 +527,12 @@ void draw()
   }  
 
   player.draw();
+  
+  tint( 0, 0, 255 );
+  for ( int i = 0; i < ENEMY_WIDTH; ++i )
+  {
+    hostages[i].draw();
+  }
   
   noTint();
   int spriteIndex = ( customFrameCount / 10 ) % 2;
