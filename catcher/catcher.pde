@@ -319,7 +319,7 @@ class Enemy extends Moveable
 };
 
 int ENEMY_WIDTH        = 11;
-int ENEMY_HEIGHT       = 1;
+int ENEMY_HEIGHT       = 6;
 int TOTAL_ENEMIES      = ENEMY_WIDTH * ENEMY_HEIGHT;
 Enemy[] enemies        = new Enemy[TOTAL_ENEMIES];
 float enemySpeed       = .3;
@@ -336,6 +336,26 @@ int score       = 0;
 
 int PLAYER_START_X = SW / 2;
 int PLAYER_START_Y = SH - 50;
+
+
+boolean[] columnFired = new boolean[ENEMY_WIDTH];
+boolean fireValid( int r, int c )
+{
+  if ( columnFired[c] )
+  {
+    return false;
+  }
+  
+  for ( int rr = r + 1; rr < ENEMY_HEIGHT; ++rr )
+  {
+    if ( enemies[rr * ENEMY_WIDTH + c].frameDied == 0 )
+    {
+      return false;
+    }
+  }
+  
+  return true;
+}
 
 void setup()
 {
@@ -414,21 +434,37 @@ void update( float dt )
     }
   }
   
-  for ( int i = 0; i < TOTAL_ENEMIES; ++i )
+  
+  for ( int i = 0; i < ENEMY_WIDTH; ++i )
   {
-    enemies[i].pos.add( PVector.mult( enemies[i].vel, dt ) );
-    enemies[i].weapon.update( dt );
-    
-    if ( enemies[i].pos.x >= SW )
+    columnFired[i] = false;
+  }
+  
+  for( int r = 0; r < ENEMY_HEIGHT; ++r )
+  {
+    for ( int c = 0; c < ENEMY_WIDTH; ++c )
     {
-      // i = killEnemy( i );
-    }
-    
-    if ( random( 1 ) < 0.0005 )
-    {
-      float x = enemies[i].pos.x;
-      float y = enemies[i].pos.y + enemies[i].size.y / 2;
-      enemies[i].weapon.fire( new PVector( x, y ) );
+      int i = r * ENEMY_WIDTH + c;
+      enemies[i].pos.add( PVector.mult( enemies[i].vel, dt ) );
+      enemies[i].weapon.update( dt );
+      
+      if ( enemies[i].frameDied != 0 )
+      {
+        continue;
+      }
+      
+      if ( enemies[i].pos.x >= SW )
+      {
+        // i = killEnemy( i );
+      }
+      
+      if ( random( 1 ) < 0.0055 && fireValid( r, c) )
+      {
+        float x = enemies[i].pos.x;
+        float y = enemies[i].pos.y + enemies[i].size.y / 2;
+        enemies[i].weapon.fire( new PVector( x, y ) );
+        columnFired[c] = true;
+      }
     }
   }
   
