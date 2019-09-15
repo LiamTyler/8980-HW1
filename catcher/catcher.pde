@@ -180,7 +180,7 @@ class PlayerWeapon extends Weapon
         continue;
       }
       
-      for ( int h = 0; h < ENEMY_WIDTH; ++h )
+      for ( int h = 0; h < numHostages; ++h )
       {
         float dx = abs( bullets[i].pos.x - hostages[h].pos.x );
         float dy = abs( bullets[i].pos.y - hostages[h].pos.y );
@@ -191,6 +191,7 @@ class PlayerWeapon extends Weapon
           {
             killPlayer();
             hostages[h].frameDied = customFrameCount;
+            --numHostages;
           }
           else
           {
@@ -370,16 +371,18 @@ class Enemy extends Moveable
   {
     type      = t;
     frameDied = 0;
+    frameTractorBeamed = 0;
     weapon    = new EnemyWeapon( type );
   }
   
   EnemyWeapon weapon;
   int type;
   int frameDied;
+  int frameTractorBeamed;
 };
 
-int ENEMY_WIDTH        = 11;
-int ENEMY_HEIGHT       = 6;
+int ENEMY_WIDTH        = 5;
+int ENEMY_HEIGHT       = 1;
 int TOTAL_ENEMIES      = ENEMY_WIDTH * ENEMY_HEIGHT;
 Enemy[] enemies        = new Enemy[TOTAL_ENEMIES];
 float enemySpeed       = .3;
@@ -517,6 +520,14 @@ void update( float dt )
     for ( int c = 0; c < ENEMY_WIDTH; ++c )
     {
       int i = r * ENEMY_WIDTH + c;
+      if ( enemies[i].frameDied == 0 && enemies[i].frameTractorBeamed != 0 && customFrameCount / 20 % 2 == 0 )
+      {
+        enemies[i].vel = PVector.sub( player.pos, enemies[i].pos );
+        enemies[i].vel.y += 1; // hack to make sure it never flies horizontally
+        enemies[i].vel.normalize();
+        enemies[i].vel.mult( 10 );
+      }
+      
       enemies[i].pos.add( PVector.mult( enemies[i].vel, dt ) );
       enemies[i].weapon.update( dt );
       
@@ -525,8 +536,10 @@ void update( float dt )
         continue;
       }
       
-      if ( enemies[i].pos.x >= SW )
+      if ( enemies[i].pos.x >= SW || enemies[i].pos.y > PLAYER_START_Y )
       {
+        enemies[i].vel = new PVector( 0, 0 );
+        enemies[i].frameDied = customFrameCount;
         // i = killEnemy( i );
       }
       
@@ -542,7 +555,7 @@ void update( float dt )
   
   for ( int enemyIndex = 0; enemyIndex < TOTAL_ENEMIES; ++enemyIndex )
   {
-    Enemy e  = enemies[enemyIndex];
+    Enemy e = enemies[enemyIndex];
     if ( e.frameDied != 0 )
     {
       continue;
@@ -555,7 +568,7 @@ void update( float dt )
       float dy = abs( b.pos.y - e.pos.y );
       
       if ( dx < ( b.size.x + e.size.x ) / 2 && dy < ( b.size.y + e.size.y ) / 2 )
-      {
+      {        
         e.frameDied = customFrameCount;
         score += 10;
         
@@ -564,9 +577,37 @@ void update( float dt )
       }
     }
     
+    for ( int bulletIndex = 0; bulletIndex < player.tractorWeapon.numBullets; ++bulletIndex )
+    {
+      Bullet b = player.tractorWeapon.bullets[bulletIndex];
+      float dx = abs( b.pos.x - e.pos.x );
+      float dy = abs( b.pos.y - e.pos.y );
+      
+      if ( dx < ( b.size.x + e.size.x ) / 2 && dy < ( b.size.y + e.size.y ) / 2 )
+      {
+        e.frameTractorBeamed = customFrameCount;
+        e.vel = PVector.sub( player.pos, e.pos );
+        e.vel.normalize();
+        e.vel.mult( 10 );
+        player.tractorWeapon.destroyBullet( bulletIndex );
+        break;
+      }
+    }
+    
     if ( player.invincible )
     {
       continue;
+    }
+    
+    float p_dx = player.pos.x - e.pos.x;
+    float p_dy = player.pos.y - e.pos.y;
+    if ( p_dx < player.size.x / 2 + e.size.x / 2 && p_dy < player.size.y / 2 + e.size.y / 2 )
+    {
+      killPlayer();
+      e.frameDied = customFrameCount;
+      e.vel.x = 0;
+      e.vel.y = 0;
+      break;
     }
     
     // enemy bullets
@@ -580,7 +621,7 @@ void update( float dt )
       {
         e.weapon.destroyBullet( bulletIndex );
         killPlayer();
-        return;
+        break;
       }
     }
   }
