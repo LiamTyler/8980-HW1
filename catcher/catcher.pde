@@ -417,6 +417,8 @@ boolean fireValid( int r, int c )
   return true;
 }
 
+int hostagesSaved = 0;
+
 boolean frameMoved = false;
 void setup()
 {
@@ -498,6 +500,8 @@ void update( float dt )
     if ( hostages[i].pos.y > PLAYER_START_Y )
     {
       --numHostages;
+      ++hostagesSaved;
+      score += 100;  
       hostages[i] = hostages[numHostages];
     }
   }
@@ -641,7 +645,17 @@ void draw()
   for ( int i = 0; i < playerLives - 1; ++i )
   {
     image( playerSprite, 150 + i * 45, SH - 15, 35, 25 );
-  }  
+  }
+  
+  tint( 0, 0, 255 );
+  image( playerSprite, 325, SH - 15, 35, 25 );
+  text( "HOSTAGES SAVED: " + str( hostagesSaved ) + "/" + str( ENEMY_WIDTH ), 350, SH - 25 );
+  tint( 0, 0, 255 );
+  
+  //for ( int i = 0; i < ENEMY_WIDTH - numH; ++i )
+  //{
+  //  image( playerSprite, 150 + i * 45, SH - 15, 35, 25 );
+  //}  
 
   player.draw();
   
