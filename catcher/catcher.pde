@@ -1,5 +1,5 @@
-String rootDir = "/home/liam/Documents/8980-HW1/";
-// String rootDir = "C:/Users/Tyler/Documents/8980-HW1/";
+// String rootDir = "/home/liam/Documents/8980-HW1/";
+String rootDir = "C:/Users/Tyler/Documents/8980-HW1/";
 
 int SW = 1280;
 int SH = 720;
@@ -23,6 +23,14 @@ class Bullet extends Moveable
   {
     pos = startPos;
     vel = startVel;
+    tag = 0;
+  }
+  
+  Bullet( PVector startPos, PVector startVel, int t )
+  {
+    pos = startPos;
+    vel = startVel;
+    tag = t;
   }
   
   void draw()
@@ -30,6 +38,8 @@ class Bullet extends Moveable
     fill( 255, 255, 255 );
     rect( pos.x, pos.y, size.x, size.y );
   }
+  
+  int tag;
 };
 
 PImage[] bulletSheet = new PImage[12];
@@ -46,6 +56,22 @@ class PlayerBullet extends Bullet
   {
     stroke( 255, 255, 255 );
     fill( 255, 255, 255 );
+    rect( pos.x, pos.y, size.x, size.y );
+  }
+};
+
+class TractorBullet extends Bullet
+{
+  TractorBullet( PVector startPos )
+  {
+    super( startPos, new PVector( 0, -10 ), 1 );
+    size = new PVector( 6, 20 );
+  }
+  
+  void draw()
+  {
+    stroke( 0, 255, 242 );
+    fill( 0, 255, 242 );
     rect( pos.x, pos.y, size.x, size.y );
   }
 };
@@ -117,9 +143,10 @@ class Weapon
 
 class PlayerWeapon extends Weapon
 {
-  PlayerWeapon()
+  PlayerWeapon( int bt )
   {
     super( 500, 10 );
+    bulletType = bt;
   }
   
   void fire( PVector pos )
@@ -127,7 +154,14 @@ class PlayerWeapon extends Weapon
     int currT = millis();
     if ( currT > timeOfLastFire + fireRate )
     {
-      bullets[numBullets] = new PlayerBullet( pos );
+      if ( bulletType == 0 )
+      {
+        bullets[numBullets] = new PlayerBullet( pos );
+      }
+      else
+      {
+        bullets[numBullets] = new TractorBullet( pos );
+      }
       ++numBullets;
       timeOfLastFire = currT;
     }
@@ -153,8 +187,17 @@ class PlayerWeapon extends Weapon
         
         if ( dx < ( bullets[i].size.x + hostages[h].size.x ) / 2 && dy < ( bullets[i].size.y + hostages[h].size.y ) / 2 )
         {
-          killPlayer();
-          hostages[h].frameDied = customFrameCount;
+          if ( bullets[i].tag == 0 )
+          {
+            killPlayer();
+            hostages[h].frameDied = customFrameCount;
+          }
+          else
+          {
+            hostages[h].frameSaved = customFrameCount;
+            hostages[h].vel.x = 0;
+            hostages[h].vel.y = 5;
+          }
           bullets[i] = bullets[numBullets - 1];
           --numBullets;
           --h;
@@ -164,6 +207,7 @@ class PlayerWeapon extends Weapon
     }
   }
   
+  int bulletType;
 };
 
 class EnemyWeapon extends Weapon
@@ -206,12 +250,20 @@ class Player extends Moveable
     lastDied       = -1000;
     invincible     = false;
     
-    weapon = new PlayerWeapon();
+    mainWeapon    = new PlayerWeapon( 0 );
+    tractorWeapon = new PlayerWeapon( 1 );
   }
   
-  void fire() 
+  void fire( int bulletType ) 
   {
-    weapon.fire( new PVector( pos.x, pos.y - size.y ) );
+    if ( bulletType == 0 )
+    {
+      mainWeapon.fire( new PVector( pos.x, pos.y - size.y ) );
+    }
+    else
+    {
+      tractorWeapon.fire( new PVector( pos.x, pos.y - size.y ) );
+    }
   }
   
   void update( float dt )
@@ -221,7 +273,8 @@ class Player extends Moveable
     
     invincible = customFrameCount - lastDied < 120;
     
-    weapon.update( dt );
+    mainWeapon.update( dt );
+    tractorWeapon.update( dt );
   }
   
   void draw()
@@ -233,7 +286,8 @@ class Player extends Moveable
     }
     
     stroke( 255, 0, 0 );
-    weapon.draw();
+    mainWeapon.draw();
+    tractorWeapon.draw();
   }
   
   PImage sprite;
@@ -241,14 +295,16 @@ class Player extends Moveable
   int[] keysPressed;
   int lastDied;
   boolean invincible;
-  Weapon weapon;
+  Weapon mainWeapon;
+  Weapon tractorWeapon;
 };
 
 class Hostage extends Moveable
 {
   Hostage()
   {
-    frameDied = 0;
+    frameDied  = 0;
+    frameSaved = 0;
   }
   void draw()
   {
@@ -265,11 +321,15 @@ class Hostage extends Moveable
     }
     else
     {
-      image( playerSprite, pos.x, pos.y, size.x, size.y );
+      if ( frameSaved == 0 || customFrameCount / 3 % 2 == 0)
+      {
+        image( playerSprite, pos.x, pos.y, size.x, size.y );
+      }
     }
   }
   
   int frameDied;
+  int frameSaved;
 };
 
 Player player;
@@ -325,7 +385,8 @@ Enemy[] enemies        = new Enemy[TOTAL_ENEMIES];
 float enemySpeed       = .3;
 PImage enemyDeathSprite;
 
-Hostage[] hostages = new Hostage[ENEMY_WIDTH];
+int numHostages    = ENEMY_WIDTH;
+Hostage[] hostages = new Hostage[numHostages];
 
 int customFrameCount = 0;
 boolean paused = false;
@@ -336,7 +397,6 @@ int score       = 0;
 
 int PLAYER_START_X = SW / 2;
 int PLAYER_START_Y = SH - 50;
-
 
 boolean[] columnFired = new boolean[ENEMY_WIDTH];
 boolean fireValid( int r, int c )
@@ -357,6 +417,7 @@ boolean fireValid( int r, int c )
   return true;
 }
 
+boolean frameMoved = false;
 void setup()
 {
   size( 100, 100 );
@@ -425,12 +486,19 @@ void update( float dt )
 {
   player.update( dt );
   
-  for ( int i = 0; i < ENEMY_WIDTH; ++i )
+  for ( int i = 0; i < numHostages; ++i )
   {
     hostages[i].pos.add( PVector.mult( hostages[i].vel, dt ) );
     if ( hostages[i].pos.x >= SW )
     {
       --playerLives;
+      --numHostages;
+      hostages[i] = hostages[numHostages];
+    }
+    if ( hostages[i].pos.y > PLAYER_START_Y )
+    {
+      --numHostages;
+      hostages[i] = hostages[numHostages];
     }
   }
   
@@ -460,7 +528,7 @@ void update( float dt )
       
       if ( random( 1 ) < 0.0055 && fireValid( r, c) )
       {
-        float x = enemies[i].pos.x;
+        float x = enemies[i].pos.x + 1;
         float y = enemies[i].pos.y + enemies[i].size.y / 2;
         enemies[i].weapon.fire( new PVector( x, y ) );
         columnFired[c] = true;
@@ -476,9 +544,9 @@ void update( float dt )
       continue;
     }
     
-    for ( int bulletIndex = 0; bulletIndex < player.weapon.numBullets; ++bulletIndex )
+    for ( int bulletIndex = 0; bulletIndex < player.mainWeapon.numBullets; ++bulletIndex )
     {
-      Bullet b = player.weapon.bullets[bulletIndex];
+      Bullet b = player.mainWeapon.bullets[bulletIndex];
       float dx = abs( b.pos.x - e.pos.x );
       float dy = abs( b.pos.y - e.pos.y );
       
@@ -487,7 +555,7 @@ void update( float dt )
         e.frameDied = customFrameCount;
         score += 10;
         
-        player.weapon.destroyBullet( bulletIndex );
+        player.mainWeapon.destroyBullet( bulletIndex );
         break;
       }
     }
@@ -516,6 +584,10 @@ void update( float dt )
 
 void draw()
 {
+  if(!frameMoved){
+    surface.setLocation(100, 100);
+    frameMoved = true;
+  }
   if ( playerLives <= 0 )
   {
     background( 0, 0, 0 );
@@ -523,6 +595,15 @@ void draw()
     textFont( pixelFont, 72 );
     textAlign( CENTER, CENTER );
     text( "GAME OVER", SW / 2, SH / 2 );
+    return;
+  }
+  if ( numHostages == 0 )
+  {
+    background( 0, 0, 0 );
+    fill( 255, 255, 255 );
+    textFont( pixelFont, 72 );
+    textAlign( CENTER, CENTER );
+    text( "YOU WIN!!!", SW / 2, SH / 2 );
     return;
   }
   
@@ -565,7 +646,7 @@ void draw()
   player.draw();
   
   tint( 0, 0, 255 );
-  for ( int i = 0; i < ENEMY_WIDTH; ++i )
+  for ( int i = 0; i < numHostages; ++i )
   {
     hostages[i].draw();
   }
@@ -614,7 +695,11 @@ void keyPressed() {
   {
     if ( key == ' ' )
     {
-      player.fire();
+      player.fire( 0 );
+    }
+    else if ( key == 't' )
+    {
+      player.fire( 1 );
     }
     else if ( key == 'p' )
     {
