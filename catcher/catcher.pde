@@ -1,5 +1,5 @@
-// String rootDir = "/home/liam/Documents/8980-HW1/";
-String rootDir = "C:/Users/Tyler/Documents/8980-HW1/";
+String rootDir = "/home/liam/Documents/8980-HW1/";
+// String rootDir = "C:/Users/Tyler/Documents/8980-HW1/";
 
 int SW = 1280;
 int SH = 720;
@@ -49,7 +49,7 @@ class PlayerBullet extends Bullet
   PlayerBullet( PVector startPos )
   {
     super( startPos, new PVector( 0, -10 ) );
-    size = new PVector( 3, 10 );
+    size = new PVector( 5, 12 );
   }
   
   void draw()
@@ -192,6 +192,7 @@ class PlayerWeapon extends Weapon
             killPlayer();
             hostages[h].frameDied = customFrameCount;
             --numHostages;
+            hostages[h] = hostages[numHostages];
           }
           else
           {
@@ -381,11 +382,11 @@ class Enemy extends Moveable
   int frameTractorBeamed;
 };
 
-int ENEMY_WIDTH        = 5;
-int ENEMY_HEIGHT       = 1;
+int ENEMY_WIDTH        = 10;
+int ENEMY_HEIGHT       = 6;
 int TOTAL_ENEMIES      = ENEMY_WIDTH * ENEMY_HEIGHT;
 Enemy[] enemies        = new Enemy[TOTAL_ENEMIES];
-float enemySpeed       = .3;
+float enemySpeed       = .25;
 PImage enemyDeathSprite;
 
 int numHostages    = ENEMY_WIDTH;
@@ -473,7 +474,7 @@ void setup()
     {
       int i = r * ENEMY_WIDTH + c;
       enemies[i]      = new Enemy( r % 3 );
-      enemies[i].pos  = new PVector( 40 * c, 200 + r * 40 );
+      enemies[i].pos  = new PVector( 35 * c, 200 + r * 40 );
       enemies[i].vel  = new PVector( enemySpeed, 0 );
       enemies[i].size = new PVector( 25, 25 );
     }
@@ -481,7 +482,7 @@ void setup()
   for ( int i = 0; i < ENEMY_WIDTH; ++i )
   {
     hostages[i]      = new Hostage( );
-    hostages[i].pos  = new PVector( 40 * i, 160 );
+    hostages[i].pos  = new PVector( 35 * i, 160 );
     hostages[i].vel  = new PVector( enemySpeed, 0 );
     hostages[i].size = new PVector( 25, 15 );
   }
